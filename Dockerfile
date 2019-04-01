@@ -1,66 +1,62 @@
-# An incomplete base Docker image for running JupyterHub
-#
-# Add your configuration to create a complete derivative Docker image.
-#
-# Include your configuration settings by starting with one of two options:
-#
-# Option 1:
-#
-# FROM jupyterhub/jupyterhub:latest
-#
-# And put your configuration file jupyterhub_config.py in /srv/jupyterhub/jupyterhub_config.py.
-#
-# Option 2:
-#
-# Or you can create your jupyterhub config and database on the host machine, and mount it with:
-#
-# docker run -v $PWD:/srv/jupyterhub -t jupyterhub/jupyterhub
-#
-# NOTE
-# If you base on jupyterhub/jupyterhub-onbuild
-# your jupyterhub_config.py will be added automatically
-# from your docker directory.
-
 FROM ubuntu:18.04
-LABEL maintainer="Jupyter Project <jupyter@googlegroups.com>"
 
-# install nodejs, utf8 locale, set CDN because default httpredir is unreliable
-ENV DEBIAN_FRONTEND noninteractive
-RUN apt-get -y update && \
-    apt-get -y upgrade && \
-    apt-get -y install wget git bzip2 && \
-    apt-get purge && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+ARG JUPYTERHUB_VERSION=0.9.*
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+      git \
+      python3 \
+      python3-dev \
+      python3-pip \
+      python3-setuptools \
+      python3-wheel \
+      libssl-dev \
+      libcurl4-openssl-dev \
+      build-essential \
+      sqlite3 \
+      $(bash -c 'if [[ $JUPYTERHUB_VERSION == "git"* ]]; then \
+        echo npm; \
+      fi') \
+      && \
+    apt-get purge && apt-get clean
+
+ARG NB_USER=jovyan
+ARG NB_UID=1000
+ARG HOME=/home/jovyan
+
 ENV LANG C.UTF-8
 
-# install Python + NodeJS with conda
-RUN wget -q https://repo.continuum.io/miniconda/Miniconda3-4.5.11-Linux-x86_64.sh -O /tmp/miniconda.sh  && \
-    echo 'e1045ee415162f944b6aebfe560b8fee */tmp/miniconda.sh' | md5sum -c - && \
-    bash /tmp/miniconda.sh -f -b -p /opt/conda && \
-    /opt/conda/bin/conda install --yes -c conda-forge \
-      python=3.6 sqlalchemy tornado jinja2 traitlets requests pip pycurl \
-      nodejs configurable-http-proxy && \
-    /opt/conda/bin/pip install --upgrade pip && \
-    rm /tmp/miniconda.sh
-ENV PATH=/opt/conda/bin:$PATH
+RUN adduser --disabled-password \
+    --gecos "Default user" \
+    --uid ${NB_UID} \
+    --home ${HOME} \
+    --force-badname \
+    ${NB_USER}
 
-ADD . /src/jupyterhub
-WORKDIR /src/jupyterhub
-
-RUN pip install . && \
-    # install custom OAuth2 handler
-    git clone https://github.com/basefarm/oauthenticator && \
+ADD requirements.txt /tmp/requirements.txt
+RUN git clone https://github.com/basefarm/oauthenticator && \
     pip install -e oauthenticator && \
-    pip install jwt && \
-    rm -rf $PWD ~/.cache ~/.npm
+    pip install jwt &&
+RUN PYCURL_SSL_LIBRARY=openssl pip3 install --no-cache-dir \
+         -r /tmp/requirements.txt \
+         $(bash -c 'if [[ $JUPYTERHUB_VERSION == "git"* ]]; then \
+            echo ${JUPYTERHUB_VERSION}; \
+          else \
+            echo jupyterhub==${JUPYTERHUB_VERSION}; \
+          fi')
 
-USER $NB_UID
+ADD jupyterhub_config.py /srv/jupyterhub_config.py
 
-RUN mkdir -p /srv/jupyterhub/
-WORKDIR /srv/jupyterhub/
-EXPOSE 8000
+ADD z2jh.py /usr/local/lib/python3.6/dist-packages/z2jh.py
+ADD cull_idle_servers.py /usr/local/bin/cull_idle_servers.py
 
-LABEL org.jupyter.service="jupyterhub"
+WORKDIR /srv/jupyterhub
 
-CMD ["jupyterhub"]
+# So we can actually write a db file here
+RUN chown ${NB_USER}:${NB_USER} /srv/jupyterhub
+
+# JupyterHub API port
+EXPOSE 8081
+
+USER ${NB_USER}
+CMD ["jupyterhub", "--config", "/srv/jupyterhub_config.py"]
