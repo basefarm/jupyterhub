@@ -1,5 +1,4 @@
-ARG BASE_CONTAINER=jupyter/scipy-notebook
-FROM $BASE_CONTAINER
+FROM jupyterhub/jupyterhub
 
 RUN git clone https://github.com/basefarm/oauthenticator && \
     pip install -e oauthenticator && \
