@@ -49,6 +49,10 @@ ADD . /src/jupyterhub
 WORKDIR /src/jupyterhub
 
 RUN pip install . && \
+    # install custom OAuth2 handler
+    git clone https://github.com/basefarm/oauthenticator && \
+    pip install -e oauthenticator && \
+    pip install jwt && \
     rm -rf $PWD ~/.cache ~/.npm
 
 RUN mkdir -p /srv/jupyterhub/
