@@ -60,4 +60,5 @@ RUN chown ${NB_USER}:${NB_USER} /srv/jupyterhub
 EXPOSE 8081
 
 USER ${NB_USER}
-CMD ["jupyterhub", "--config", "/srv/jupyterhub_config.py"]
+
+# CMD ["jupyterhub", "--config", "/srv/jupyterhub_config.py"]
