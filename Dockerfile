@@ -55,6 +55,8 @@ RUN pip install . && \
     pip install jwt && \
     rm -rf $PWD ~/.cache ~/.npm
 
+USER $NB_USER
+
 RUN mkdir -p /srv/jupyterhub/
 WORKDIR /srv/jupyterhub/
 EXPOSE 8000
