@@ -35,8 +35,8 @@ RUN adduser --disabled-password \
 
 ADD requirements.txt /tmp/requirements.txt
 RUN git clone https://github.com/basefarm/oauthenticator && \
-    pip install -e oauthenticator && \
-    pip install jwt
+    pip3 install -e oauthenticator && \
+    pip3 install jwt
 
 RUN PYCURL_SSL_LIBRARY=openssl pip3 install --no-cache-dir \
          -r /tmp/requirements.txt \
