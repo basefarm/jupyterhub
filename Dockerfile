@@ -55,7 +55,7 @@ RUN pip install . && \
     pip install jwt && \
     rm -rf $PWD ~/.cache ~/.npm
 
-USER $NB_USER
+USER $NB_UID
 
 RUN mkdir -p /srv/jupyterhub/
 WORKDIR /srv/jupyterhub/
